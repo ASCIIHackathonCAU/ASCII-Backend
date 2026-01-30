@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: ascii-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL_A=postgresql://postgres:postgres@db:5432/ascii_a
+      - DATABASE_URL_B=postgresql://postgres:postgres@db:5432/ascii_b
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - ENVIRONMENT=development
+    volumes:
+      - ./app:/app/app
+      - ./data:/app/data
+    depends_on:
+      - db
+      - redis
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  db:
+    image: postgres:15-alpine
+    container_name: ascii-backend-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ascii
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    command: postgres -c shared_preload_libraries=pg_stat_statements
+
+  redis:
+    image: redis:7-alpine
+    container_name: ascii-backend-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+
