@@ -124,3 +124,43 @@ class DiffRequest(BaseModel):
     raw_text_a: Optional[str] = None
     receipt_id_b: Optional[str] = None
     raw_text_b: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Cookie Receipt
+# ---------------------------------------------------------------------------
+
+class CookieInfo(BaseModel):
+    """쿠키 정보"""
+    name: str
+    domain: str
+    party_type: str = Field(..., description="first_party | third_party")
+    purpose: str = Field(..., description="advertising | analytics | functional | necessary")
+    duration: str = Field(..., description="session | persistent")
+    expires_at: Optional[str] = None
+
+
+class CookieReceipt(BaseModel):
+    """쿠키 동의 영수증"""
+    receipt_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    created_at: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    site_name: str = Field(..., description="사이트 이름")
+    site_url: str = Field(..., description="사이트 URL")
+    cookies: list[CookieInfo] = Field(default_factory=list)
+    total_cookies: int = 0
+    first_party_count: int = 0
+    third_party_count: int = 0
+    advertising_count: int = 0
+    analytics_count: int = 0
+    functional_count: int = 0
+    session_count: int = 0
+    persistent_count: int = 0
+
+
+class CookieReceiptCreateRequest(BaseModel):
+    """쿠키 영수증 생성 요청"""
+    site_name: str
+    site_url: str
+    cookies: list[CookieInfo]
