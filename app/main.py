@@ -1,18 +1,42 @@
 """
-ASCII Backend: 통합 FastAPI 애플리케이션
-Backend-A와 Backend-B 모듈을 포함하는 단일 애플리케이션
+ReceiptOS Backend — FastAPI application entry‑point.
 """
+import logging
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.config import settings
+from app.a.database import Base, engine
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(name)-30s  %(levelname)-5s  %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: ensure data dir + tables exist
+    os.makedirs(settings.DATA_DIR, exist_ok=True)
+    # Import models so Base.metadata knows about them
+    import app.a.models  # noqa: F401
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database tables ready (%s)", settings.DATABASE_URL_A)
+    yield
+    logger.info("Shutting down")
+
 
 app = FastAPI(
-    title="ASCII Backend",
-    description="Consent & Request Receipt Inbox + Eraser & Revocation Concierge API",
+    title="ReceiptOS",
+    description="Consent document → structured extraction → receipt card → diff",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
-# CORS 설정
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -24,15 +48,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {
-        "message": "ASCII Backend API",
-        "version": "0.1.0",
-        "status": "running",
-        "modules": {
-            "a": "Consent & Request Receipt Inbox",
-            "b": "Eraser & Revocation Concierge"
-        }
-    }
+    return {"service": "ReceiptOS", "version": "0.1.0", "status": "running"}
 
 
 @app.get("/health")
@@ -40,16 +56,7 @@ async def health_check():
     return {"status": "healthy"}
 
 
-# Backend-A 라우터 등록
-# from app.a.routers import ingest, analyze, documents
-# app.include_router(ingest.router, prefix="/api/a/ingest", tags=["Backend-A: Ingest"])
-# app.include_router(analyze.router, prefix="/api/a/analyze", tags=["Backend-A: Analyze"])
-# app.include_router(documents.router, prefix="/api/a/documents", tags=["Backend-A: Documents"])
+# ── Register API router ──────────────────────────────────────────────────
+from app.a.routers.receipts import router as receipts_router  # noqa: E402
 
-# Backend-B 라우터 등록
-# from app.b.routers import revocations, routing, letters, evidence
-# app.include_router(revocations.router, prefix="/api/b/revocations", tags=["Backend-B: Revocations"])
-# app.include_router(routing.router, prefix="/api/b/routing", tags=["Backend-B: Routing"])
-# app.include_router(letters.router, prefix="/api/b/letters", tags=["Backend-B: Letters"])
-# app.include_router(evidence.router, prefix="/api/b/evidence", tags=["Backend-B: Evidence"])
-
+app.include_router(receipts_router, prefix="/api", tags=["ReceiptOS"])
