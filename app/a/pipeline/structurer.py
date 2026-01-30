@@ -1,5 +1,5 @@
 """
-Rule‑based field extractor (structurer).
+Rule-based field extractor (structurer).
 
 Scans Korean privacy / consent documents for standard sections and
 extracts structured fields with evidence spans.
@@ -12,7 +12,7 @@ from typing import Any
 from app.a.schemas import Evidence, ExtractedField
 
 # ---------------------------------------------------------------------------
-# Per‑field configuration
+# Per-field configuration
 # ---------------------------------------------------------------------------
 
 FIELD_CONFIGS: dict[str, dict[str, Any]] = {
@@ -21,8 +21,21 @@ FIELD_CONFIGS: dict[str, dict[str, Any]] = {
             r"수집.{0,5}항목",
             r"수집하는\s*개인정보",
             r"개인정보\s*항목",
-            r"수집.{0,5}정보",
             r"처리하는.{0,5}개인정보",
+        ],
+    },
+    "required_items": {
+        "triggers": [
+            r"필수\s*항목",
+            r"필수\s*동의",
+            r"필수\s*수집",
+        ],
+    },
+    "optional_items": {
+        "triggers": [
+            r"선택\s*항목",
+            r"선택\s*동의",
+            r"선택\s*수집",
         ],
     },
     "purposes": {
@@ -31,7 +44,6 @@ FIELD_CONFIGS: dict[str, dict[str, Any]] = {
             r"수집.{0,5}목적",
             r"처리\s*목적",
             r"개인정보.{0,5}목적",
-            r"목적.{0,5}이용",
         ],
     },
     "retention": {
@@ -39,17 +51,24 @@ FIELD_CONFIGS: dict[str, dict[str, Any]] = {
             r"보유.{0,5}기간",
             r"보관.{0,5}기간",
             r"이용\s*기간",
-            r"보존.{0,5}기간",
+            r"파기\s*시점",
             r"보유.{0,5}이용\s*기간",
         ],
     },
     "third_party": {
         "triggers": [
             r"제3자\s*제공",
-            r"제삼자",
+            r"제공\s*받는",
             r"개인정보.{0,5}제공",
+            r"공유",
+        ],
+    },
+    "outsourcing": {
+        "triggers": [
             r"위탁",
-            r"제공받는\s*자",
+            r"수탁",
+            r"처리위탁",
+            r"업무위탁",
         ],
     },
     "overseas_transfer": {
@@ -57,18 +76,23 @@ FIELD_CONFIGS: dict[str, dict[str, Any]] = {
             r"국외\s*이전",
             r"해외\s*이전",
             r"국외\s*제공",
-            r"해외\s*서버",
-            r"국외\s*보관",
+            r"해외\s*보관",
+        ],
+    },
+    "data_transfers": {
+        "triggers": [
+            r"전송",
+            r"이전",
+            r"제공\s*처",
         ],
     },
     "revoke_path": {
         "triggers": [
             r"동의\s*철회",
             r"철회",
-            r"거부.{0,5}권리",
+            r"거부.{0,5}방법",
             r"삭제\s*요청",
-            r"파기\s*요청",
-            r"동의\s*거부",
+            r"문의\s*처",
         ],
     },
 }
@@ -141,8 +165,8 @@ def _find_sections(
 # Value parser helpers
 # ---------------------------------------------------------------------------
 
-_LIST_SEP = re.compile(r"[,，、·\n]")
-_BULLET = re.compile(r"^[\-·•■□●○▶▷]\s*")
+_LIST_SEP = re.compile(r"[,·•●\n]")
+_BULLET = re.compile(r"^[\-\u25a0\u25cf\u2022\s]*")
 _NUM_PREFIX = re.compile(r"^\d+[.\)]\s*")
 
 
@@ -175,7 +199,16 @@ def extract_fields(text: str) -> dict[str, ExtractedField]:
         merged = "\n".join(s["text"] for s in sections)
 
         # Choose list vs scalar representation
-        if field_name in ("data_collected", "purposes", "third_party"):
+        if field_name in (
+            "data_collected",
+            "required_items",
+            "optional_items",
+            "purposes",
+            "third_party",
+            "outsourcing",
+            "overseas_transfer",
+            "data_transfers",
+        ):
             value: str | list[str] = _extract_list_items(merged)
         else:
             value = merged.strip()
@@ -186,7 +219,7 @@ def extract_fields(text: str) -> dict[str, ExtractedField]:
             quote_lines = sec["text"].split("\n")
             quote = " ".join(quote_lines[:3])
             if len(quote) > 200:
-                quote = quote[:200] + "…"
+                quote = quote[:200] + "..."
             loc = (
                 f"line {sec['start_line']}"
                 if sec["end_line"] <= sec["start_line"] + 1
@@ -197,3 +230,4 @@ def extract_fields(text: str) -> dict[str, ExtractedField]:
         fields[field_name] = ExtractedField(value=value, evidence=evidence)
 
     return fields
+

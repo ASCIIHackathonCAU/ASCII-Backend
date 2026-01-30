@@ -84,6 +84,17 @@ class Receipt(BaseModel):
     fields: dict[str, ExtractedField] = Field(default_factory=dict)
     content_hash: str = ""
     actions: list[Action] = Field(default_factory=list)
+    required_items: list[str] = Field(default_factory=list)
+    optional_items: list[str] = Field(default_factory=list)
+    over_collection: bool = False
+    over_collection_reasons: list[str] = Field(default_factory=list)
+    transfers: list[dict] = Field(
+        default_factory=list,
+        description=(
+            "List of data transfer destinations with type labels "
+            "(third_party | outsourcing | overseas) and data_items"
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
