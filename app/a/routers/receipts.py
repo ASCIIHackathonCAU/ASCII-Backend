@@ -76,6 +76,18 @@ def get_receipt(receipt_id: str, db: Session = Depends(get_db)):
     return row.receipt_json
 
 
+# ── DELETE /api/receipts/{receipt_id} ─────────────────────────────────────
+@router.delete("/receipts/{receipt_id}")
+def delete_receipt(receipt_id: str, db: Session = Depends(get_db)):
+    row = db.query(ReceiptModel).filter(ReceiptModel.id == receipt_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Receipt not found")
+    db.delete(row)
+    db.commit()
+    logger.info("Deleted receipt %s", receipt_id)
+    return {"message": "Receipt deleted successfully", "receipt_id": receipt_id}
+
+
 # ── POST /api/diff ───────────────────────────────────────────────────────
 @router.post("/diff", response_model=DiffResult)
 def diff(req: DiffRequest, db: Session = Depends(get_db)):
