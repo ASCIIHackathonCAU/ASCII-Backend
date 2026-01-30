@@ -18,12 +18,3 @@ class ReceiptModel(Base):
     extract_result_json = Column(JSON, nullable=False)
     receipt_json = Column(JSON, nullable=False)
 
-
-class CookieReceiptModel(Base):
-    __tablename__ = "cookie_receipts"
-
-    id = Column(String, primary_key=True)
-    created_at = Column(String, nullable=False)
-    site_name = Column(String, nullable=False)
-    site_url = Column(String, nullable=False)
-    cookie_receipt_json = Column(JSON, nullable=False)

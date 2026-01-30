@@ -79,11 +79,9 @@ async def health_check():
 
 # ── Register API router ──────────────────────────────────────────────────
 from app.a.routers.receipts import router as receipts_router  # noqa: E402
-from app.a.routers.cookies import router as cookies_router  # noqa: E402
 from app.a.routers.email import router as email_router  # noqa: E402
 from app.b.routers.revocation import router as revocation_router  # noqa: E402
 
 app.include_router(receipts_router, prefix="/api", tags=["ReceiptOS"])
-app.include_router(cookies_router, prefix="/api", tags=["Cookie Receipts"])
 app.include_router(email_router, prefix="/api", tags=["Email Integration"])
 app.include_router(revocation_router, prefix="/api", tags=["Revocation Requests"])
