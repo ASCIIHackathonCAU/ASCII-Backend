@@ -164,3 +164,4 @@ class CookieReceiptCreateRequest(BaseModel):
     site_name: str
     site_url: str
     cookies: list[CookieInfo]
+

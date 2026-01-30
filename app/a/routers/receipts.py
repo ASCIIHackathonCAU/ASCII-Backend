@@ -64,15 +64,19 @@ def list_receipts(db: Session = Depends(get_db)):
         .order_by(ReceiptModel.created_at.desc())
         .all()
     )
+    logger.info("Found %d receipts in database", len(rows))
     return [r.receipt_json for r in rows]
 
 
 # ── GET /api/receipts/{receipt_id} ───────────────────────────────────────
 @router.get("/receipts/{receipt_id}")
 def get_receipt(receipt_id: str, db: Session = Depends(get_db)):
+    logger.info("Fetching receipt: %s", receipt_id)
     row = db.query(ReceiptModel).filter(ReceiptModel.id == receipt_id).first()
     if not row:
+        logger.warning("Receipt not found: %s", receipt_id)
         raise HTTPException(status_code=404, detail="Receipt not found")
+    logger.info("Receipt found: %s", receipt_id)
     return row.receipt_json
 
 
@@ -82,9 +86,17 @@ def delete_receipt(receipt_id: str, db: Session = Depends(get_db)):
     row = db.query(ReceiptModel).filter(ReceiptModel.id == receipt_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Receipt not found")
+    
+    # 연결된 이메일의 receipt_id를 null로 업데이트
+    from app.a.models.email_account import ConsentEmailModel
+    emails = db.query(ConsentEmailModel).filter(ConsentEmailModel.receipt_id == receipt_id).all()
+    for email in emails:
+        email.receipt_id = None
+        email.analysis_json = None
+    
     db.delete(row)
     db.commit()
-    logger.info("Deleted receipt %s", receipt_id)
+    logger.info("Deleted receipt %s and unlinked %d emails", receipt_id, len(emails))
     return {"message": "Receipt deleted successfully", "receipt_id": receipt_id}
 
 
